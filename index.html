@@ -13,6 +13,8 @@
       --accent-strong: #ff6b3d;
       --text-main: #f5f5f5;
       --text-muted: #a8a8c0;
+      --ok: #35d07f;
+      --warn: #ffcf5a;
     }
     * { box-sizing: border-box; }
     body {
@@ -27,7 +29,7 @@
       padding: 16px;
     }
     .shell {
-      position: relative; /* ✅ مهم عشان زر الكلاسيك يثبت جوه الكارد */
+      position: relative;
       width: 100%;
       max-width: 520px;
       border-radius: 20px;
@@ -64,7 +66,7 @@
       cursor: pointer;
       background: linear-gradient(135deg, var(--accent), var(--accent-strong));
       color: #050816;
-      font-weight: 600;
+      font-weight: 700;
       box-shadow: 0 10px 24px rgba(255, 107, 61, 0.45);
     }
     .btn-secondary {
@@ -73,10 +75,23 @@
       color: var(--text-main);
       border: 1px solid var(--border-soft);
       box-shadow: none;
+      font-weight: 600;
     }
+    .btn-warn {
+      background: linear-gradient(135deg, var(--warn), #ff9f3d);
+      color: #1b1204;
+      box-shadow: 0 10px 24px rgba(255, 207, 90, 0.25);
+      font-weight: 800;
+    }
+    .btn-ok {
+      background: linear-gradient(135deg, var(--ok), #1fbf6b);
+      color: #07120c;
+      box-shadow: 0 10px 24px rgba(53, 208, 127, 0.25);
+      font-weight: 800;
+    }
+
     .hidden { display: none; }
 
-    /* Logger بسيط */
     .log {
       margin-top: 12px;
       font-size: 12px;
@@ -86,12 +101,11 @@
       border-radius: 12px;
       padding: 10px;
       background: rgba(0,0,0,0.18);
-      max-height: 140px;
+      max-height: 170px;
       overflow: auto;
       white-space: pre-wrap;
     }
 
-    /* ✅ زر الوضع الكلاسيكي */
     .classic-btn{
       position: absolute;
       top: 14px;
@@ -107,16 +121,25 @@
       backdrop-filter: blur(6px);
     }
     .classic-btn:active { transform: scale(0.98); }
+
+    .pill {
+      margin-top: 10px;
+      font-size: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      color: #e8e8ff;
+      line-height: 1.5;
+    }
   </style>
 </head>
 
 <body>
   <div class="shell">
 
-    <!-- ✅ زر الوضع الكلاسيكي (أعلى يمين) -->
     <button id="classicModeBtn" class="classic-btn" type="button">الوضع الكلاسيكي</button>
 
-    <!-- الصفحة الأولى -->
     <div id="page1">
       <div class="title">تشغيل يوتيوب معنا</div>
       <div class="subtitle">اضغط على الزر بالأسفل للانتقال إلى خطوة تشغيل الفيديو.</div>
@@ -129,13 +152,20 @@
       <div id="log1" class="log"></div>
     </div>
 
-    <!-- الصفحة الثانية -->
     <div id="page2" class="hidden">
       <div class="title">خطوة تشغيل الفيديو</div>
-      <div class="subtitle">اختر طريقة تشغيل الفيديو</div>
+      <div class="subtitle">اختر طريقة تشغيل الفيديو أو قم بتحميل الدرس.</div>
 
       <div class="token-label">authToken من localStorage</div>
       <div id="tokenBoxPage2" class="token-box">جارِ تحميل التوكن...</div>
+
+      <!-- ✅ زر تحميل الدرس -->
+      <button id="downloadLessonBtn" class="btn btn-warn">تحميل الدرس ⬇️</button>
+
+      <!-- ✅ زر تشغيل أوفلاين -->
+      <button id="openOfflineBtn" class="btn btn-ok hidden">تشغيل الدرس أوفلاين ▶</button>
+
+      <div id="offlineInfo" class="pill hidden"></div>
 
       <button id="openYoutube" class="btn">تشغيل يوتيوب (Watch) ▶</button>
       <button id="openYoutubeEmbedDirect" class="btn btn-secondary">تشغيل يوتيوب (Embedded مباشر) ▶</button>
@@ -153,7 +183,17 @@
   const YOUTUBE_WATCH_URL = "https://www.youtube.com/watch?v=m-VVub8Jp_w";
   const YOUTUBE_EMBED_URL = "https://www.youtube.com/embed/m-VVub8Jp_w?autoplay=1&playsinline=1";
 
-  // ✅ بيانات الدرس يدويًا هنا
+  // ✅ مثال بيانات الدرس (عدّلها عندك)
+  const DOWNLOAD_META = {
+    youtubeUrl: YOUTUBE_WATCH_URL,
+    courseId: 123,
+    sectionName: "Section A",
+    lessonName: "Lesson 1",
+    thumb: "https://example.com/thumb.jpg",
+    userEmail: "user@example.com",
+    courseName: "Course Name"
+  };
+
   const LESSON_CONTEXT = {
     isInteractiveQuiz: true,
     timelineMarkers: [
@@ -172,7 +212,16 @@
   function log(msg) {
     const activeLog = el("page2").classList.contains("hidden") ? el("log1") : el("log2");
     const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
-    if (activeLog) activeLog.textContent = (activeLog.textContent + line).slice(-3000);
+    if (activeLog) activeLog.textContent = (activeLog.textContent + line).slice(-4000);
+  }
+
+  function safeJsonParse(x) {
+    try {
+      if (typeof x === "string") return JSON.parse(x);
+      return x;
+    } catch (_) {
+      return x;
+    }
   }
 
   function parseTimeToSeconds(timeStr) {
@@ -202,31 +251,18 @@
     return { ok: true, timeline, quizzes };
   }
 
-  function notifyFlutterContextReady(payload) {
-    try {
-      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-        window.flutter_inappwebview.callHandler("lessonContextReady", payload);
-        log("✅ تم إرسال lessonContextReady لـ Flutter");
-      } else {
-        log("ℹ️ flutter_inappwebview غير موجود (تجربة متصفح عادي)");
-      }
-    } catch (e) {
-      log("⚠️ خطأ أثناء callHandler: " + (e && e.message ? e.message : e));
-    }
-  }
+  // ✅ مفاتيح ثابتة للتحميل
+  function writeDownloadMetaToLocalStorage(meta) {
+    localStorage.setItem("dl_youtubeUrl", String(meta.youtubeUrl || ""));
+    localStorage.setItem("dl_courseId", String(meta.courseId ?? ""));
+    localStorage.setItem("dl_sectionName", String(meta.sectionName || ""));
+    localStorage.setItem("dl_lessonName", String(meta.lessonName || ""));
+    localStorage.setItem("dl_thumb", String(meta.thumb || ""));
+    localStorage.setItem("dl_userEmail", String(meta.userEmail || ""));
+    localStorage.setItem("dl_courseName", String(meta.courseName || ""));
 
-  /* ✅ إرسال حدث classicMode لـ Flutter */
-  function notifyFlutterClassicMode(payload) {
-    try {
-      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-        window.flutter_inappwebview.callHandler("classicMode", payload);
-        log("✅ تم إرسال classicMode لـ Flutter");
-      } else {
-        log("ℹ️ flutter_inappwebview غير موجود (تجربة متصفح عادي)");
-      }
-    } catch (e) {
-      log("⚠️ خطأ أثناء classicMode callHandler: " + (e && e.message ? e.message : e));
-    }
+    localStorage.setItem("offline_ready", "false");
+    localStorage.removeItem("offline_filePath");
   }
 
   function setTokenBoxes() {
@@ -250,6 +286,33 @@
       log("➡️ فتح الصفحة 2");
     }
     setTokenBoxes();
+    refreshOfflineUI();
+  }
+
+  function notifyFlutter(handlerName, payload, okMsg) {
+    try {
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        window.flutter_inappwebview.callHandler(handlerName, payload);
+        if (okMsg) log(okMsg);
+      } else {
+        log("ℹ️ flutter_inappwebview غير موجود (متصفح عادي)");
+      }
+    } catch (e) {
+      log(`⚠️ خطأ أثناء ${handlerName}: ` + (e && e.message ? e.message : e));
+    }
+  }
+
+  function notifyFlutterContextReady(payload) {
+    notifyFlutter("lessonContextReady", payload, "✅ تم إرسال lessonContextReady لـ Flutter");
+  }
+  function notifyFlutterClassicMode(payload) {
+    notifyFlutter("classicMode", payload, "✅ تم إرسال classicMode لـ Flutter");
+  }
+  function notifyFlutterDownloadLesson(payload) {
+    notifyFlutter("downloadLesson", payload, "✅ تم إرسال downloadLesson لـ Flutter");
+  }
+  function notifyFlutterOpenOffline(payload) {
+    notifyFlutter("openOffline", payload, "✅ تم إرسال openOffline لـ Flutter");
   }
 
   function prepareAndGo(url) {
@@ -265,12 +328,8 @@
       };
 
       log("✅ تم حفظ الداتا في localStorage");
-      log("timelineMarkers=" + localStorage.getItem("timelineMarkers"));
-      log("lessonQuizzes=" + localStorage.getItem("lessonQuizzes"));
-
       notifyFlutterContextReady(payload);
 
-      // انتقل
       setTimeout(() => {
         log("🚀 انتقال إلى: " + url);
         window.location.assign(url);
@@ -280,8 +339,98 @@
     }
   }
 
+  // ✅ UI للأوفلاين
+  function refreshOfflineUI() {
+    const ready = localStorage.getItem("offline_ready") === "true";
+    const fp = localStorage.getItem("offline_filePath") || "";
+
+    const openOfflineBtn = el("openOfflineBtn");
+    const offlineInfo = el("offlineInfo");
+    if (!openOfflineBtn || !offlineInfo) return;
+
+    if (ready && fp) {
+      openOfflineBtn.classList.remove("hidden");
+      offlineInfo.classList.remove("hidden");
+      offlineInfo.innerHTML =
+        `<strong>✅ جاهز للأوفلاين</strong><br>` +
+        `filePath: <span style="opacity:.9">${escapeHtml(fp)}</span>`;
+    } else {
+      openOfflineBtn.classList.add("hidden");
+      offlineInfo.classList.add("hidden");
+      offlineInfo.textContent = "";
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  // ✅ بدل window.location.assign(filePath) -> ابعت لفلتر
+  function openOfflineViaFlutter() {
+    const fp = localStorage.getItem("offline_filePath") || "";
+    if (!fp) {
+      log("⚠️ لا يوجد offline_filePath");
+      return;
+    }
+
+    const payload = {
+      filePath: fp,
+      courseId: localStorage.getItem("dl_courseId") || "",
+      sectionName: localStorage.getItem("dl_sectionName") || "",
+      lessonName: localStorage.getItem("dl_lessonName") || "",
+      thumb: localStorage.getItem("dl_thumb") || "",
+      userEmail: localStorage.getItem("dl_userEmail") || "",
+      courseName: localStorage.getItem("dl_courseName") || "",
+      ts: Date.now()
+    };
+
+    notifyFlutterOpenOffline(payload);
+  }
+
+  // ✅ Flutter بعد التحميل ينفّذ: window.onOfflineReady({...})
+  window.onOfflineReady = function(payload) {
+    const data = safeJsonParse(payload) || {};
+    try {
+      if (data && data.error) {
+        log("❌ Download error from Flutter: " + data.error);
+      }
+
+      const filePath = String(data.filePath || "");
+      if (!filePath) {
+        log("⚠️ onOfflineReady بدون filePath");
+      }
+
+      localStorage.setItem("offline_ready", filePath ? "true" : "false");
+      localStorage.setItem("offline_filePath", filePath);
+
+      if (data.courseId != null) localStorage.setItem("dl_courseId", String(data.courseId));
+      if (data.sectionName != null) localStorage.setItem("dl_sectionName", String(data.sectionName));
+      if (data.lessonName != null) localStorage.setItem("dl_lessonName", String(data.lessonName));
+      if (data.thumb != null) localStorage.setItem("dl_thumb", String(data.thumb));
+      if (data.userEmail != null) localStorage.setItem("dl_userEmail", String(data.userEmail));
+      if (data.courseName != null) localStorage.setItem("dl_courseName", String(data.courseName));
+
+      // (اختياري) نخزن اليوتيوب برضه
+      if (data.youtubeUrl != null) localStorage.setItem("dl_youtubeUrl", String(data.youtubeUrl));
+
+      log("✅ onOfflineReady: offline_ready=" + localStorage.getItem("offline_ready"));
+      log("offline_filePath=" + localStorage.getItem("offline_filePath"));
+
+      refreshOfflineUI();
+      showPage(2);
+    } catch (e) {
+      log("❌ onOfflineReady error: " + (e && e.message ? e.message : e));
+    }
+  };
+
   function bindHandlers() {
     setTokenBoxes();
+    refreshOfflineUI();
     log("✅ bindHandlers اشتغل");
 
     const classicBtn = el("classicModeBtn");
@@ -289,47 +438,64 @@
     const backToPage1 = el("backToPage1");
     const btnWatch = el("openYoutube");
     const btnEmbed = el("openYoutubeEmbedDirect");
+    const downloadBtn = el("downloadLessonBtn");
+    const openOfflineBtn = el("openOfflineBtn");
 
-    // ✅ زر الكلاسيك مود
     if (classicBtn) {
       classicBtn.addEventListener("click", () => {
-        try {
-          localStorage.setItem("classic_mode", "true");
-          log("✅ classic_mode=true saved to localStorage");
+        localStorage.setItem("classic_mode", "true");
+        log("✅ classic_mode=true saved to localStorage");
+        notifyFlutterClassicMode({ classic_mode: true, ts: Date.now() });
+      });
+    }
 
-          // إخطار Flutter فورًا (أفضل من polling)
-          notifyFlutterClassicMode({ classic_mode: true, ts: Date.now() });
+    if (downloadBtn) {
+      downloadBtn.addEventListener("click", () => {
+        try {
+          // 1) احفظ بيانات التحميل
+          writeDownloadMetaToLocalStorage(DOWNLOAD_META);
+          log("✅ تم حفظ بيانات التحميل في localStorage");
+
+          // 2) احفظ lessonContext (لو محتاجه مع التحميل)
+          const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
+
+          // 3) ابعت Flutter payload جاهز
+          const payload = {
+            ...DOWNLOAD_META,
+            isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
+            timelineMarkers: result.timeline || [],
+            lessonQuizzes: result.quizzes || [],
+            ts: Date.now()
+          };
+
+          notifyFlutterDownloadLesson(payload);
         } catch (e) {
-          log("❌ classic mode error: " + (e && e.message ? e.message : e));
+          log("❌ downloadLessonBtn error: " + (e && e.message ? e.message : e));
         }
       });
-    } else {
-      log("⚠️ زر classicModeBtn غير موجود");
+    }
+
+    if (openOfflineBtn) {
+      openOfflineBtn.addEventListener("click", openOfflineViaFlutter);
     }
 
     if (goToPage2) goToPage2.addEventListener("click", () => showPage(2));
     if (backToPage1) backToPage1.addEventListener("click", () => showPage(1));
+
     if (btnWatch) btnWatch.addEventListener("click", () => prepareAndGo(YOUTUBE_WATCH_URL));
     if (btnEmbed) btnEmbed.addEventListener("click", () => prepareAndGo(YOUTUBE_EMBED_URL));
-
-    if (!goToPage2) log("⚠️ زر goToPage2 غير موجود");
   }
 
-  // ربط آمن (يشتغل في أغلب البيئات)
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", bindHandlers);
   } else {
     bindHandlers();
   }
 
-  // fallback إضافي لو بيئة WebView غريبة
-  setTimeout(() => {
-    try { bindHandlers(); } catch (_) {}
-  }, 300);
+  setTimeout(() => { try { bindHandlers(); } catch (_) {} }, 300);
 
 })();
 </script>
 
 </body>
 </html>
-
