@@ -152,29 +152,35 @@
       <div id="log1" class="log"></div>
     </div>
 
-    <div id="page2" class="hidden">
-      <div class="title">خطوة تشغيل الفيديو</div>
-      <div class="subtitle">اختر طريقة تشغيل الفيديو أو قم بتحميل الدرس.</div>
+ <div id="page2" class="hidden">
+  <div class="title">خطوة تشغيل الفيديو</div>
+  <div class="subtitle">اختر طريقة تشغيل الفيديو أو قم بتحميل الدرس.</div>
 
-      <div class="token-label">authToken من localStorage</div>
-      <div id="tokenBoxPage2" class="token-box">جارِ تحميل التوكن...</div>
+  <div class="token-label">authToken من localStorage</div>
+  <div id="tokenBoxPage2" class="token-box"></div>
 
-      <!-- ✅ زر تحميل الدرس -->
-      <button id="downloadLessonBtn" class="btn btn-warn">تحميل الدرس ⬇️</button>
+  <button id="downloadLessonBtn" class="btn btn-warn">تحميل الدرس ⬇️</button>
+  <button id="openOfflineBtn" class="btn btn-ok hidden">تشغيل الدرس أوفلاين ▶</button>
 
-      <!-- ✅ زر تشغيل أوفلاين -->
-      <button id="openOfflineBtn" class="btn btn-ok hidden">تشغيل الدرس أوفلاين ▶</button>
+  <div id="offlineInfo" class="pill hidden"></div>
 
-      <div id="offlineInfo" class="pill hidden"></div>
-
-      <button id="openYoutube" class="btn">تشغيل يوتيوب (Watch) ▶</button>
-      <button id="openYoutubeEmbedDirect" class="btn btn-secondary">تشغيل يوتيوب (Embedded مباشر) ▶</button>
-      <button id="backToPage1" class="btn btn-secondary">رجوع للصفحة السابقة</button>
-
-      <div id="log2" class="log"></div>
-    </div>
-
+  <!-- ⬇⬇⬇ هنا بالظبط -->
+  <div id="offlinePlayerWrap" class="hidden">
+    <div class="pill"><strong>🎬 Offline Player</strong></div>
+    <video id="offlineVideo"
+           style="width:100%; border-radius:14px; margin-top:10px;"
+           controls
+           playsinline
+           webkit-playsinline>
+    </video>
   </div>
+
+  <button id="openYoutube" class="btn">تشغيل يوتيوب ▶</button>
+  <button id="openYoutubeEmbedDirect" class="btn btn-secondary">تشغيل يوتيوب Embed ▶</button>
+  <button id="backToPage1" class="btn btn-secondary">رجوع</button>
+
+  <div id="log2" class="log"></div>
+</div>
 
 <script>
 (function () {
@@ -427,6 +433,28 @@
       log("❌ onOfflineReady error: " + (e && e.message ? e.message : e));
     }
   };
+window.PlayOfflineFile = function(filePath) {
+  try {
+    const wrap = document.getElementById("offlinePlayerWrap");
+    const vid  = document.getElementById("offlineVideo");
+    if (!wrap || !vid) {
+      log("⚠️ offline player elements missing");
+      return;
+    }
+
+    wrap.classList.remove("hidden");
+
+    vid.src = String(filePath || "");
+    vid.load();
+
+    const p = vid.play();
+    if (p && p.catch) p.catch(() => {});
+
+    log("✅ PlayOfflineFile: " + filePath);
+  } catch (e) {
+    log("❌ PlayOfflineFile error: " + (e?.message || e));
+  }
+};
 
   function bindHandlers() {
     setTokenBoxes();
