@@ -4,197 +4,217 @@
   <meta charset="UTF-8" />
   <title>تشغيل يوتيوب مع التوكن</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <style>
-    :root{
-      --bg-main:#050816;
-      --bg-card: radial-gradient(circle at top,#1f1f49 0,#050816 40%,#02030a 100%);
-      --border-soft: rgba(255,255,255,.12);
-      --accent:#ffb347;
-      --accent-strong:#ff6b3d;
-      --text-main:#f5f5f5;
-      --text-muted:#a8a8c0;
-      --ok:#35d07f;
-      --warn:#ffcf5a;
-      --bad:#ff5a72;
+    :root {
+      --bg-main: #050816;
+      --bg-card: radial-gradient(circle at top, #1f1f49 0, #050816 40%, #02030a 100%);
+      --border-soft: rgba(255, 255, 255, 0.12);
+      --accent: #ffb347;
+      --accent-strong: #ff6b3d;
+      --text-main: #f5f5f5;
+      --text-muted: #a8a8c0;
+      --ok: #35d07f;
+      --warn: #ffcf5a;
+      --bad: #ff5a72;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:var(--bg-main);
-      color:var(--text-main);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
     }
-    .shell{
-      position:relative;
-      width:100%;
-      max-width:520px;
-      border-radius:20px;
-      background:var(--bg-card);
-      box-shadow:0 20px 45px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.05);
-      padding:20px 18px 18px;
-    }
-
-    .title{font-size:18px;font-weight:700;margin-bottom:8px;text-align:center}
-    .subtitle{font-size:13px;color:var(--text-muted);margin-bottom:16px;text-align:center}
-
-    .token-label{font-size:12px;color:var(--text-muted);margin-bottom:6px}
-    .token-box{
-      width:100%;
-      min-height:54px;
-      border-radius:14px;
-      background:rgba(3,7,30,.9);
-      border:1px solid var(--border-soft);
-      padding:8px 10px;
-      font-size:12px;
-      line-height:1.5;
-      overflow-wrap:break-word;
+    .shell {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      border-radius: 20px;
+      background: var(--bg-card);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      padding: 20px 18px 18px;
     }
 
-    .btn{
-      margin-top:18px;
-      width:100%;
-      border-radius:999px;
-      border:none;
-      font-size:14px;
-      padding:10px 16px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      cursor:pointer;
-      background:linear-gradient(135deg,var(--accent),var(--accent-strong));
-      color:#050816;
-      font-weight:800;
-      box-shadow:0 10px 24px rgba(255,107,61,.45);
+    .title { font-size: 18px; font-weight: 600; margin-bottom: 8px; text-align: center; }
+    .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; text-align: center; }
+    .token-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    .token-box {
+      width: 100%;
+      min-height: 54px;
+      border-radius: 14px;
+      background: rgba(3, 7, 30, 0.9);
+      border: 1px solid var(--border-soft);
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: break-word;
     }
-    .btn-secondary{
-      margin-top:10px;
-      background:transparent;
-      color:var(--text-main);
-      border:1px solid var(--border-soft);
-      box-shadow:none;
-      font-weight:700;
+    .btn {
+      margin-top: 18px;
+      width: 100%;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #050816;
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(255, 107, 61, 0.45);
     }
-    .btn-warn{
-      background:linear-gradient(135deg,var(--warn),#ff9f3d);
-      color:#1b1204;
-      box-shadow:0 10px 24px rgba(255,207,90,.25);
-      font-weight:900;
+    .btn-secondary {
+      margin-top: 10px;
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid var(--border-soft);
+      box-shadow: none;
+      font-weight: 600;
     }
-    .btn-ok{
-      background:linear-gradient(135deg,var(--ok),#1fbf6b);
-      color:#07120c;
-      box-shadow:0 10px 24px rgba(53,208,127,.25);
-      font-weight:900;
+    .btn-warn {
+      background: linear-gradient(135deg, var(--warn), #ff9f3d);
+      color: #1b1204;
+      box-shadow: 0 10px 24px rgba(255, 207, 90, 0.25);
+      font-weight: 800;
     }
+    .btn-ok {
+      background: linear-gradient(135deg, var(--ok), #1fbf6b);
+      color: #07120c;
+      box-shadow: 0 10px 24px rgba(53, 208, 127, 0.25);
+      font-weight: 800;
+    }
+    .hidden { display: none; }
 
-    .hidden{display:none}
-
-    .log{
-      margin-top:12px;
-      font-size:12px;
-      color:#cfcfe6;
-      opacity:.92;
-      border:1px dashed rgba(255,255,255,.18);
-      border-radius:12px;
-      padding:10px;
-      background:rgba(0,0,0,.18);
-      max-height:170px;
-      overflow:auto;
-      white-space:pre-wrap;
+    .log {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #cfcfe6;
+      opacity: 0.9;
+      border: 1px dashed rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(0,0,0,0.18);
+      max-height: 170px;
+      overflow: auto;
+      white-space: pre-wrap;
     }
 
     .classic-btn{
-      position:absolute;
-      top:14px;
-      right:14px;
-      z-index:10;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(0,0,0,.25);
-      color:var(--text-main);
-      font-size:12px;
-      padding:8px 12px;
-      cursor:pointer;
-      backdrop-filter:blur(6px);
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 10;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.25);
+      color: var(--text-main);
+      font-size: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
     }
-    .classic-btn:active{transform:scale(.98)}
+    .classic-btn:active { transform: scale(0.98); }
 
-    .pill{
-      margin-top:10px;
-      font-size:12px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.18);
-      color:#e8e8ff;
-      line-height:1.5;
+    .pill {
+      margin-top: 10px;
+      font-size: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      color: #e8e8ff;
+      line-height: 1.5;
     }
 
     /* ✅ Download Center */
-    .dl-title{font-weight:900;margin-bottom:6px}
-    .dl-item{
-      margin-top:10px;
-      padding:10px;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:12px;
-      background:rgba(255,255,255,.04);
+    .dl-title { font-weight: 800; margin-bottom: 6px; }
+    .dl-item {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
     }
-    .dl-row{display:flex;gap:10px;align-items:center}
-    .dl-thumb{
-      width:44px;height:44px;border-radius:10px;object-fit:cover;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      flex:0 0 auto;
+    .dl-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
     }
-    .dl-meta{flex:1;min-width:0}
-    .dl-lesson{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .dl-sub{font-size:11px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .dl-status{font-size:11px;margin-top:6px}
-    .bar{
-      margin-top:8px;height:8px;background:rgba(255,255,255,.12);
-      border-radius:8px;overflow:hidden;
+    .dl-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
     }
-    .bar > div{height:100%;width:0%;background:linear-gradient(135deg,#35d07f,#1fbf6b)}
-    .bar.failed > div{background:linear-gradient(135deg,#ff5a72,#ff3d5f)}
-    .bar.paused > div{background:linear-gradient(135deg,#ffcf5a,#ff9f3d)}
+    .dl-meta { flex: 1; min-width: 0; }
+    .dl-lesson { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dl-sub { font-size: 11px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dl-status { font-size: 11px; margin-top: 6px; }
+    .bar {
+      margin-top: 8px;
+      height: 8px;
+      background: rgba(255,255,255,.12);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .bar > div { height: 100%; width: 0%; background: linear-gradient(135deg, #35d07f, #1fbf6b); }
+    .bar.failed > div { background: linear-gradient(135deg, #ff5a72, #ff3d5f); }
+    .bar.paused > div { background: linear-gradient(135deg, #ffcf5a, #ff9f3d); }
 
     /* ✅ Quality Modal */
-    .modal{
-      position:fixed;inset:0;
-      background:rgba(0,0,0,.65);
-      display:flex;align-items:center;justify-content:center;
-      padding:16px;z-index:9999;
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 9999;
     }
     .modal-card{
-      width:100%;max-width:420px;
-      background:rgba(10,14,36,.98);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:16px;
-      padding:14px;
-      box-shadow:0 20px 45px rgba(0,0,0,.6);
+      width:100%;
+      max-width: 420px;
+      background: rgba(10, 14, 36, 0.98);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.6);
     }
-    .modal-title{font-weight:900;margin-bottom:10px;text-align:center}
-    .hint{font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:8px;line-height:1.5}
+    .modal-title{
+      font-weight: 800;
+      margin-bottom: 10px;
+      text-align: center;
+    }
     .qbtn{
       width:100%;
-      margin-top:8px;
-      border-radius:12px;
-      padding:10px 12px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:var(--text-main);
-      cursor:pointer;
-      font-weight:800;
+      margin-top: 8px;
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text-main);
+      cursor: pointer;
+      font-weight: 700;
     }
-    .qbtn:hover{background:rgba(255,255,255,.10)}
-    #qualityModal.hidden{display:none !important;}
+    .qbtn:hover{ background: rgba(255,255,255,0.10); }
+    .hint{
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align:center;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    #qualityModal.hidden { display: none !important; }
   </style>
 </head>
 
@@ -203,7 +223,6 @@
 
     <button id="classicModeBtn" class="classic-btn" type="button">الوضع الكلاسيكي</button>
 
-    <!-- Page 1 -->
     <div id="page1">
       <div class="title">تشغيل يوتيوب معنا</div>
       <div class="subtitle">اضغط على الزر بالأسفل للانتقال إلى خطوة تشغيل الفيديو.</div>
@@ -216,24 +235,39 @@
       <div id="log1" class="log"></div>
     </div>
 
-    <!-- Page 2 -->
     <div id="page2" class="hidden">
       <div class="title">خطوة تشغيل الفيديو</div>
       <div class="subtitle">اختر طريقة تشغيل الفيديو أو قم بتحميل الدرس.</div>
 
       <div class="token-label">authToken من localStorage</div>
-      <div id="tokenBoxPage2" class="token-box">جارِ تحميل التوكن...</div>
+      <div id="tokenBoxPage2" class="token-box"></div>
 
       <button id="downloadLessonBtn" class="btn btn-warn">تحميل الدرس ⬇️</button>
 
       <button id="openOfflineBtn" class="btn btn-ok hidden">تشغيل الدرس أوفلاين ▶</button>
+
       <button id="deleteOfflineBtn" class="btn btn-secondary hidden">حذف الدرس المحمل 🗑️</button>
 
       <div id="offlineInfo" class="pill hidden"></div>
 
-      <!-- ✅ Download Center -->
+      <!-- ✅ NEW: selected quality pill -->
+      <div id="selectedQualityPill" class="pill hidden"></div>
+
+      <!-- ✅ Download Center (multi downloads) -->
       <div id="dlCenter" class="pill hidden"></div>
 
+      <div id="offlinePlayerWrap" class="hidden">
+        <div class="pill"><strong>🎬 Offline Player</strong></div>
+        <video id="offlineVideo"
+               style="width:100%; border-radius:14px; margin-top:10px;"
+               controls
+               playsinline
+               webkit-playsinline>
+        </video>
+      </div>
+
+      <button id="openYoutube" class="btn">تشغيل يوتيوب ▶</button>
+      <button id="openYoutubeEmbedDirect" class="btn btn-secondary">تشغيل يوتيوب Embed ▶</button>
       <button id="backToPage1" class="btn btn-secondary">رجوع</button>
 
       <div id="log2" class="log"></div>
@@ -241,7 +275,7 @@
 
   </div>
 
-  <!-- Quality Modal -->
+  <!-- ✅ Quality Modal (hidden by default) -->
   <div id="qualityModal" class="modal hidden">
     <div class="modal-card">
       <div class="modal-title">اختر جودة التحميل</div>
@@ -255,12 +289,9 @@
 (function () {
   "use strict";
 
-  // =========================
-  // Demo placeholders
-  // =========================
   const YOUTUBE_WATCH_URL = "https://www.youtube.com/watch?v=QlqUrDAhXIU";
+  const YOUTUBE_EMBED_URL = "https://www.youtube.com/embed/m-VVub8Jp_w?autoplay=1&playsinline=1";
 
-  // ⚠️ لاحقًا لازم تبقى Dynamic حسب الدرس
   const DOWNLOAD_META = {
     youtubeUrl: YOUTUBE_WATCH_URL,
     courseId: 123,
@@ -284,9 +315,6 @@
     ]
   };
 
-  // =========================
-  // Helpers
-  // =========================
   function el(id){ return document.getElementById(id); }
 
   function safeJsonParse(x) {
@@ -310,6 +338,12 @@
       .replaceAll("'", "&#039;");
   }
 
+  function parseTimeToSeconds(timeStr) {
+    const parts = String(timeStr || "00:00:00").split(":").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+
   function statusLabel(s){
     if (s === "completed") return "✅ اكتمل";
     if (s === "failed") return "❌ فشل";
@@ -317,15 +351,6 @@
     return "⬇️ جاري التحميل";
   }
 
-  function parseTimeToSeconds(timeStr) {
-    const parts = String(timeStr || "00:00:00").split(":").map(Number);
-    if (parts.length !== 3 || parts.some(isNaN)) return 0;
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-
-  // =========================
-  // Flutter bridge
-  // =========================
   function notifyFlutter(handlerName, payload, okMsg) {
     try {
       if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
@@ -345,14 +370,6 @@
   function notifyFlutterDeleteLesson(payload) { notifyFlutter("deleteLesson", payload, "🗑️ deleteLesson"); }
   function notifyFlutterGetQualities(payload) { notifyFlutter("getQualities", payload, "📩 getQualities"); }
 
-  // ✅ مهم: ping لفلتر إن الصفحة جاهزة تستقبل progress
-  function notifyFlutterWebReady() {
-    notifyFlutter("webReady", { ok:true, ts: Date.now() }, "✅ webReady");
-  }
-
-  // =========================
-  // Token + Navigation
-  // =========================
   function setTokenBoxes() {
     const token = localStorage.getItem("authToken") || "(لا يوجد authToken)";
     const b1 = el("tokenBoxPage1");
@@ -377,11 +394,9 @@
     }
     setTokenBoxes();
     refreshOfflineUI();
+    renderSelectedQualityUI(); // ✅ NEW
   }
 
-  // =========================
-  // LocalStorage writers
-  // =========================
   function writeLessonContextToLocalStorage(ctx) {
     const timeline = (ctx.timelineMarkers || []).map(m => ({
       name: m.name || "",
@@ -411,14 +426,10 @@
     localStorage.setItem("dl_thumb", String(meta.thumb || ""));
     localStorage.setItem("dl_userEmail", String(meta.userEmail || ""));
     localStorage.setItem("dl_courseName", String(meta.courseName || ""));
-
     localStorage.setItem("offline_ready", "false");
     localStorage.removeItem("offline_filePath");
   }
 
-  // =========================
-  // Offline UI
-  // =========================
   function refreshOfflineUI() {
     const ready = localStorage.getItem("offline_ready") === "true";
     const fp = localStorage.getItem("offline_filePath") || "";
@@ -442,6 +453,22 @@
       offlineInfo.classList.add("hidden");
       offlineInfo.textContent = "";
     }
+  }
+
+  // ✅ NEW: show selected quality pill
+  function renderSelectedQualityUI() {
+    const pill = el("selectedQualityPill");
+    if (!pill) return;
+
+    const q = localStorage.getItem("dl_selectedQuality") || "";
+    if (!q) {
+      pill.classList.add("hidden");
+      pill.textContent = "";
+      return;
+    }
+
+    pill.classList.remove("hidden");
+    pill.innerHTML = `📥 <strong>جودة التحميل المختارة:</strong> <span style="opacity:.95">${escapeHtml(q)}</span>`;
   }
 
   function openOfflineViaFlutter() {
@@ -479,9 +506,7 @@
     notifyFlutterDeleteLesson(payload);
   }
 
-  // =========================
-  // ✅ Download Center (multi)
-  // =========================
+  // Download Center
   window.onDownloadProgressList = function(payload){
     const list = safeJsonParse(payload) || [];
     const box = el("dlCenter");
@@ -496,11 +521,11 @@
     box.classList.remove("hidden");
 
     const itemsHtml = list.map(item => {
-      const percent = Number.isFinite(item.percent) ? Number(item.percent) : Math.round(Number(item.progress || 0) * 100);
+      const p = Number(item.progress ?? 0);
+      const percent = Number.isFinite(item.percent) ? Number(item.percent) : Math.round(p * 100);
       const remaining = Math.max(0, 100 - percent);
       const status = String(item.status || "downloading");
       const barClass = status === "failed" ? "bar failed" : (status === "paused" ? "bar paused" : "bar");
-
       const thumb = item.thumbnailUrl
         ? `<img class="dl-thumb" src="${escapeHtml(item.thumbnailUrl)}" />`
         : `<div class="dl-thumb"></div>`;
@@ -525,16 +550,13 @@
     box.innerHTML = `<div class="dl-title">⬇️ مركز التحميلات</div>${itemsHtml}`;
   };
 
-  // =========================
-  // Quality modal flow
-  // =========================
+  // Quality modal
   function showQualityModal(qualities){
     const modal = el("qualityModal");
     const list = el("qualityList");
     if (!modal || !list) return;
 
     list.innerHTML = "";
-
     const sorted = [...qualities].sort((a,b)=>{
       const ai = parseInt(String(a).replace(/\D/g,'')) || 0;
       const bi = parseInt(String(b).replace(/\D/g,'')) || 0;
@@ -547,6 +569,7 @@
       b.textContent = q;
       b.onclick = () => {
         localStorage.setItem("dl_selectedQuality", q);
+        renderSelectedQualityUI(); // ✅ NEW
         hideQualityModal();
         startDownloadWithSelectedQuality(q);
       };
@@ -575,6 +598,7 @@
       const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
 
       localStorage.setItem("dl_selectedQuality", q);
+      renderSelectedQualityUI(); // ✅ NEW
 
       const payload = {
         ...DOWNLOAD_META,
@@ -592,9 +616,6 @@
     }
   }
 
-  // =========================
-  // Flutter callbacks
-  // =========================
   window.onOfflineReady = function(payload) {
     const data = safeJsonParse(payload) || {};
     if (data.error) log("❌ Download error: " + data.error);
@@ -613,6 +634,7 @@
     if (data.selectedQuality != null) localStorage.setItem("dl_selectedQuality", String(data.selectedQuality));
 
     refreshOfflineUI();
+    renderSelectedQualityUI(); // ✅ NEW
     showPage(2);
   };
 
@@ -623,19 +645,15 @@
     localStorage.setItem("offline_ready", "false");
     localStorage.removeItem("offline_filePath");
     refreshOfflineUI();
+    renderSelectedQualityUI(); // ✅ NEW
     showPage(2);
   };
 
-  // =========================
-  // Bind UI events
-  // =========================
   function bindHandlers() {
     setTokenBoxes();
     refreshOfflineUI();
+    renderSelectedQualityUI(); // ✅ NEW
     log("✅ bindHandlers اشتغل");
-
-    // ✅ tell Flutter we're ready for progress updates
-    notifyFlutterWebReady();
 
     const classicBtn = el("classicModeBtn");
     const goToPage2 = el("goToPage2");
