@@ -176,6 +176,9 @@
       margin-bottom: 8px;
       line-height: 1.5;
     }
+
+    /* ✅ الإصلاح المهم: المودال لما يكون hidden يختفي حتى لو .modal display:flex */
+    #qualityModal.hidden { display: none !important; }
   </style>
 </head>
 
@@ -211,7 +214,6 @@
 
       <div id="offlineInfo" class="pill hidden"></div>
 
-      <!-- (اختياري) Offline Inline Player - لو لسه بتستخدمه -->
       <div id="offlinePlayerWrap" class="hidden">
         <div class="pill"><strong>🎬 Offline Player</strong></div>
         <video id="offlineVideo"
@@ -248,7 +250,6 @@
   const YOUTUBE_WATCH_URL = "https://www.youtube.com/watch?v=QlqUrDAhXIU";
   const YOUTUBE_EMBED_URL = "https://www.youtube.com/embed/m-VVub8Jp_w?autoplay=1&playsinline=1";
 
-  // ✅ مثال بيانات الدرس (عدّلها عندك)
   const DOWNLOAD_META = {
     youtubeUrl: YOUTUBE_WATCH_URL,
     courseId: 123,
@@ -280,10 +281,7 @@
     if (activeLog) activeLog.textContent = (activeLog.textContent + line).slice(-4000);
   }
 
-  function safeJsonParse(x) {
-    try { return (typeof x === "string") ? JSON.parse(x) : x; }
-    catch (_) { return x; }
-  }
+  function safeJsonParse(x) { try { return (typeof x === "string") ? JSON.parse(x) : x; } catch (_) { return x; } }
 
   function parseTimeToSeconds(timeStr) {
     const parts = String(timeStr || "00:00:00").split(":").map(Number);
@@ -320,7 +318,6 @@
     localStorage.setItem("dl_thumb", String(meta.thumb || ""));
     localStorage.setItem("dl_userEmail", String(meta.userEmail || ""));
     localStorage.setItem("dl_courseName", String(meta.courseName || ""));
-
     localStorage.setItem("offline_ready", "false");
     localStorage.removeItem("offline_filePath");
   }
@@ -362,48 +359,11 @@
     }
   }
 
-  function notifyFlutterContextReady(payload) {
-    notifyFlutter("lessonContextReady", payload, "✅ تم إرسال lessonContextReady لـ Flutter");
-  }
-  function notifyFlutterClassicMode(payload) {
-    notifyFlutter("classicMode", payload, "✅ تم إرسال classicMode لـ Flutter");
-  }
-  function notifyFlutterDownloadLesson(payload) {
-    notifyFlutter("downloadLesson", payload, "✅ تم إرسال downloadLesson لـ Flutter");
-  }
-  function notifyFlutterOpenOffline(payload) {
-    notifyFlutter("openOffline", payload, "✅ تم إرسال openOffline لـ Flutter");
-  }
-  function notifyFlutterDeleteLesson(payload) {
-    notifyFlutter("deleteLesson", payload, "🗑️ تم إرسال deleteLesson لـ Flutter");
-  }
-  function notifyFlutterGetQualities(payload) {
-    notifyFlutter("getQualities", payload, "📩 طلبنا قائمة الجودات من Flutter");
-  }
-
-  function prepareAndGo(url) {
-    try {
-      const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
-
-      const payload = {
-        ok: result.ok,
-        isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
-        timelineMarkers: result.timeline || [],
-        lessonQuizzes: result.quizzes || [],
-        ts: Date.now()
-      };
-
-      log("✅ تم حفظ الداتا في localStorage");
-      notifyFlutterContextReady(payload);
-
-      setTimeout(() => {
-        log("🚀 انتقال إلى: " + url);
-        window.location.assign(url);
-      }, 80);
-    } catch (e) {
-      log("❌ خطأ داخل prepareAndGo: " + (e && e.message ? e.message : e));
-    }
-  }
+  function notifyFlutterClassicMode(payload) { notifyFlutter("classicMode", payload, "✅ classicMode"); }
+  function notifyFlutterDownloadLesson(payload) { notifyFlutter("downloadLesson", payload, "✅ downloadLesson"); }
+  function notifyFlutterOpenOffline(payload) { notifyFlutter("openOffline", payload, "✅ openOffline"); }
+  function notifyFlutterDeleteLesson(payload) { notifyFlutter("deleteLesson", payload, "🗑️ deleteLesson"); }
+  function notifyFlutterGetQualities(payload) { notifyFlutter("getQualities", payload, "📩 getQualities"); }
 
   function refreshOfflineUI() {
     const ready = localStorage.getItem("offline_ready") === "true";
@@ -418,9 +378,7 @@
       openOfflineBtn.classList.remove("hidden");
       deleteOfflineBtn.classList.remove("hidden");
       offlineInfo.classList.remove("hidden");
-      offlineInfo.innerHTML =
-        `<strong>✅ جاهز للأوفلاين</strong><br>` +
-        `filePath: <span style="opacity:.9">${escapeHtml(fp)}</span>`;
+      offlineInfo.innerHTML = `<strong>✅ جاهز للأوفلاين</strong><br>filePath: <span style="opacity:.9">${escapeHtml(fp)}</span>`;
     } else {
       openOfflineBtn.classList.add("hidden");
       deleteOfflineBtn.classList.add("hidden");
@@ -452,7 +410,6 @@
       courseName: localStorage.getItem("dl_courseName") || "",
       ts: Date.now()
     };
-
     notifyFlutterOpenOffline(payload);
   }
 
@@ -471,23 +428,16 @@
       courseName: localStorage.getItem("dl_courseName") || "",
       ts: Date.now()
     };
-
-    localStorage.setItem("delete_requested", "true");
-    localStorage.setItem("delete_requested_payload", JSON.stringify(payload));
     notifyFlutterDeleteLesson(payload);
   }
 
-  /* =========================
-     ✅ Quality Modal Flow
-     ========================= */
+  /* ===== Quality Modal Flow ===== */
   function showQualityModal(qualities){
     const modal = el("qualityModal");
     const list = el("qualityList");
     if (!modal || !list) return;
 
     list.innerHTML = "";
-
-    // اعرض أعلى جودة فوق (اختياري)
     const sorted = [...qualities].sort((a,b)=>{
       const ai = parseInt(String(a).replace(/\D/g,'')) || 0;
       const bi = parseInt(String(b).replace(/\D/g,'')) || 0;
@@ -514,141 +464,72 @@
     if (modal) modal.classList.add("hidden");
   }
 
-  // Flutter يرجّع الجودات هنا
   window.onQualitiesReady = function(payload){
     const data = safeJsonParse(payload) || {};
-    try {
-      if (!data.ok) {
-        log("❌ onQualitiesReady error: " + (data.error || "unknown"));
-        return;
-      }
-      const qualities = data.qualities || [];
-      if (!qualities.length) {
-        log("⚠️ لا توجد جودات متاحة");
-        return;
-      }
-      showQualityModal(qualities);
-    } catch(e){
-      log("❌ onQualitiesReady parse error: " + (e?.message || e));
-    }
+    if (!data.ok) { log("❌ qualities error: " + (data.error || "unknown")); return; }
+    const qualities = data.qualities || [];
+    if (!qualities.length) { log("⚠️ لا توجد جودات"); return; }
+    showQualityModal(qualities);
   };
 
   function startDownloadWithSelectedQuality(q){
-    try {
-      writeDownloadMetaToLocalStorage(DOWNLOAD_META);
-      const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
+    writeDownloadMetaToLocalStorage(DOWNLOAD_META);
+    const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
 
-      localStorage.setItem("dl_selectedQuality", q);
+    localStorage.setItem("dl_selectedQuality", q);
 
-      const payload = {
-        ...DOWNLOAD_META,
-        selectedQuality: q, // ✅ الجديد
-        isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
-        timelineMarkers: result.timeline || [],
-        lessonQuizzes: result.quizzes || [],
-        ts: Date.now()
-      };
+    const payload = {
+      ...DOWNLOAD_META,
+      selectedQuality: q,
+      isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
+      timelineMarkers: result.timeline || [],
+      lessonQuizzes: result.quizzes || [],
+      ts: Date.now()
+    };
 
-      log("✅ تم اختيار الجودة: " + q);
-      notifyFlutterDownloadLesson(payload);
-    } catch (e) {
-      log("❌ startDownloadWithSelectedQuality error: " + (e?.message || e));
-    }
+    log("✅ تم اختيار الجودة: " + q);
+    notifyFlutterDownloadLesson(payload);
   }
 
-  /* =========================
-     ✅ Flutter callbacks
-     ========================= */
+  /* ===== Flutter callbacks ===== */
   window.onOfflineReady = function(payload) {
     const data = safeJsonParse(payload) || {};
-    try {
-      if (data && data.error) {
-        log("❌ Download error from Flutter: " + data.error);
-      }
+    if (data.error) { log("❌ Download error: " + data.error); }
 
-      const filePath = String(data.filePath || "");
-      if (!filePath) {
-        log("⚠️ onOfflineReady بدون filePath");
-      }
+    const filePath = String(data.filePath || "");
+    localStorage.setItem("offline_ready", filePath ? "true" : "false");
+    localStorage.setItem("offline_filePath", filePath);
 
-      localStorage.setItem("offline_ready", filePath ? "true" : "false");
-      localStorage.setItem("offline_filePath", filePath);
+    if (data.youtubeUrl != null) localStorage.setItem("dl_youtubeUrl", String(data.youtubeUrl));
+    if (data.courseId != null) localStorage.setItem("dl_courseId", String(data.courseId));
+    if (data.sectionName != null) localStorage.setItem("dl_sectionName", String(data.sectionName));
+    if (data.lessonName != null) localStorage.setItem("dl_lessonName", String(data.lessonName));
+    if (data.thumb != null) localStorage.setItem("dl_thumb", String(data.thumb));
+    if (data.userEmail != null) localStorage.setItem("dl_userEmail", String(data.userEmail));
+    if (data.courseName != null) localStorage.setItem("dl_courseName", String(data.courseName));
+    if (data.selectedQuality != null) localStorage.setItem("dl_selectedQuality", String(data.selectedQuality));
 
-      if (data.courseId != null) localStorage.setItem("dl_courseId", String(data.courseId));
-      if (data.sectionName != null) localStorage.setItem("dl_sectionName", String(data.sectionName));
-      if (data.lessonName != null) localStorage.setItem("dl_lessonName", String(data.lessonName));
-      if (data.thumb != null) localStorage.setItem("dl_thumb", String(data.thumb));
-      if (data.userEmail != null) localStorage.setItem("dl_userEmail", String(data.userEmail));
-      if (data.courseName != null) localStorage.setItem("dl_courseName", String(data.courseName));
-      if (data.youtubeUrl != null) localStorage.setItem("dl_youtubeUrl", String(data.youtubeUrl));
-
-      // ✅ خزّن الجودة اللي تم التحميل بها لو Flutter رجعها (اختياري)
-      if (data.selectedQuality != null) localStorage.setItem("dl_selectedQuality", String(data.selectedQuality));
-
-      log("✅ onOfflineReady: offline_ready=" + localStorage.getItem("offline_ready"));
-      log("offline_filePath=" + localStorage.getItem("offline_filePath"));
-
-      refreshOfflineUI();
-      showPage(2);
-    } catch (e) {
-      log("❌ onOfflineReady error: " + (e && e.message ? e.message : e));
-    }
+    refreshOfflineUI();
+    showPage(2);
   };
 
   window.onOfflineDeleted = function(payload) {
     const data = safeJsonParse(payload) || {};
-    try {
-      if (data && data.error) {
-        log("❌ Delete error from Flutter: " + data.error);
-        return;
-      }
+    if (data.error) { log("❌ Delete error: " + data.error); return; }
 
-      localStorage.setItem("offline_deleted_success", "true");
-      localStorage.setItem("offline_deleted_payload", JSON.stringify(data));
-
-      localStorage.setItem("offline_ready", "false");
-      localStorage.removeItem("offline_filePath");
-
-      log("✅ تم حذف الدرس المحمل بنجاح");
-      refreshOfflineUI();
-      showPage(2);
-    } catch (e) {
-      log("❌ onOfflineDeleted error: " + (e && e.message ? e.message : e));
-    }
-  };
-
-  // (اختياري) inline player function لو لسه بتستخدمه
-  window.PlayOfflineFile = function(filePath) {
-    try {
-      const wrap = document.getElementById("offlinePlayerWrap");
-      const vid  = document.getElementById("offlineVideo");
-      if (!wrap || !vid) {
-        log("⚠️ offline player elements missing");
-        return;
-      }
-
-      wrap.classList.remove("hidden");
-      vid.src = String(filePath || "");
-      vid.load();
-
-      const p = vid.play();
-      if (p && p.catch) p.catch(() => {});
-      log("✅ PlayOfflineFile: " + filePath);
-    } catch (e) {
-      log("❌ PlayOfflineFile error: " + (e?.message || e));
-    }
+    localStorage.setItem("offline_ready", "false");
+    localStorage.removeItem("offline_filePath");
+    refreshOfflineUI();
+    showPage(2);
   };
 
   function bindHandlers() {
     setTokenBoxes();
     refreshOfflineUI();
-    log("✅ bindHandlers اشتغل");
 
     const classicBtn = el("classicModeBtn");
     const goToPage2 = el("goToPage2");
     const backToPage1 = el("backToPage1");
-    const btnWatch = el("openYoutube");
-    const btnEmbed = el("openYoutubeEmbedDirect");
     const downloadBtn = el("downloadLessonBtn");
     const openOfflineBtn = el("openOfflineBtn");
     const deleteOfflineBtn = el("deleteOfflineBtn");
@@ -659,19 +540,14 @@
     if (classicBtn) {
       classicBtn.addEventListener("click", () => {
         localStorage.setItem("classic_mode", "true");
-        log("✅ classic_mode=true saved to localStorage");
         notifyFlutterClassicMode({ classic_mode: true, ts: Date.now() });
       });
     }
 
-    // ✅ الجديد: زر التحميل يطلب الجودات أولاً
+    // ✅ لا نطلب الجودات إلا عند الضغط على زر التحميل
     if (downloadBtn) {
       downloadBtn.addEventListener("click", () => {
-        try {
-          notifyFlutterGetQualities({ youtubeUrl: DOWNLOAD_META.youtubeUrl, ts: Date.now() });
-        } catch (e) {
-          log("❌ download click error: " + (e?.message || e));
-        }
+        notifyFlutterGetQualities({ youtubeUrl: DOWNLOAD_META.youtubeUrl, ts: Date.now() });
       });
     }
 
@@ -680,9 +556,6 @@
 
     if (goToPage2) goToPage2.addEventListener("click", () => showPage(2));
     if (backToPage1) backToPage1.addEventListener("click", () => showPage(1));
-
-    if (btnWatch) btnWatch.addEventListener("click", () => prepareAndGo(YOUTUBE_WATCH_URL));
-    if (btnEmbed) btnEmbed.addEventListener("click", () => prepareAndGo(YOUTUBE_EMBED_URL));
   }
 
   if (document.readyState === "loading") {
@@ -698,3 +571,5 @@
 
 </body>
 </html>
+هو ليه الكود دا اول ما بفتح الويب فيو بيظهر قدامي الديلوج بتاع الجودات انا مش عاوز دا انا عاوز اظهره لما اضغط علي زر تحميل الدرس ويكون فيه جودات زي ما وضحت فوق فممكن تديني الصفحة بالكامل بعد اضافه التعديلات
+::contentReference[oaicite:0]{index=0}
