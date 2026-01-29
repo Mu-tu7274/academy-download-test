@@ -286,9 +286,13 @@
 (function () {
   "use strict";
 
+  // =========================
+  // Config / Demo placeholders
+  // =========================
   const YOUTUBE_WATCH_URL = "https://www.youtube.com/watch?v=QlqUrDAhXIU";
   const YOUTUBE_EMBED_URL = "https://www.youtube.com/embed/m-VVub8Jp_w?autoplay=1&playsinline=1";
 
+  // ⚠️ في النسخة النهائية: خلي DOWNLOAD_META يتغير حسب الدرس اللي المستخدم بيضغط عليه
   const DOWNLOAD_META = {
     youtubeUrl: YOUTUBE_WATCH_URL,
     courseId: 123,
@@ -312,11 +316,19 @@
     ]
   };
 
+  // =========================
+  // Helpers
+  // =========================
   function el(id){ return document.getElementById(id); }
-  function safeJsonParse(x) { try { return (typeof x === "string") ? JSON.parse(x) : x; } catch (_) { return x; } }
+
+  function safeJsonParse(x) {
+    try { return (typeof x === "string") ? JSON.parse(x) : x; }
+    catch (_) { return x; }
+  }
 
   function log(msg) {
-    const activeLog = el("page2").classList.contains("hidden") ? el("log1") : el("log2");
+    const p2 = el("page2");
+    const activeLog = (p2 && p2.classList.contains("hidden")) ? el("log1") : el("log2");
     const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
     if (activeLog) activeLog.textContent = (activeLog.textContent + line).slice(-4000);
   }
@@ -330,6 +342,12 @@
       .replaceAll("'", "&#039;");
   }
 
+  function parseTimeToSeconds(timeStr) {
+    const parts = String(timeStr || "00:00:00").split(":").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+
   function statusLabel(s){
     if (s === "completed") return "✅ اكتمل";
     if (s === "failed") return "❌ فشل";
@@ -337,55 +355,9 @@
     return "⬇️ جاري التحميل";
   }
 
-  /* =========================
-     ✅ Download Center (multi)
-     Flutter will call: window.onDownloadProgressList([...])
-     ========================= */
-  window.onDownloadProgressList = function(payload){
-    const list = safeJsonParse(payload) || [];
-    const box = el("dlCenter");
-    if (!box) return;
-
-    if (!Array.isArray(list) || list.length === 0) {
-      box.classList.add("hidden");
-      box.innerHTML = "";
-      return;
-    }
-
-    box.classList.remove("hidden");
-
-    const itemsHtml = list.map(item => {
-      const p = Number(item.progress ?? 0);
-      const percent = Number.isFinite(item.percent) ? Number(item.percent) : Math.round(p * 100);
-      const remaining = Math.max(0, 100 - percent);
-      const status = String(item.status || "downloading");
-
-      const barClass = status === "failed" ? "bar failed" : (status === "paused" ? "bar paused" : "bar");
-
-      const thumb = item.thumbnailUrl ? `<img class="dl-thumb" src="${escapeHtml(item.thumbnailUrl)}" />` : `<div class="dl-thumb"></div>`;
-
-      return `
-        <div class="dl-item">
-          <div class="dl-row">
-            ${thumb}
-            <div class="dl-meta">
-              <div class="dl-lesson">${escapeHtml(item.lessonName || "")}</div>
-              <div class="dl-sub">${escapeHtml(item.courseName || "")} • ${escapeHtml(item.sectionName || "")}</div>
-              <div class="dl-status">${statusLabel(status)} — ${percent}% (متبقي ${remaining}%)</div>
-              <div class="${barClass}">
-                <div style="width:${percent}%;"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    box.innerHTML = `<div class="dl-title">⬇️ مركز التحميلات</div>${itemsHtml}`;
-  };
-
-  /* ===== Existing helper functions (your flow) ===== */
-
+  // =========================
+  // Flutter bridge
+  // =========================
   function notifyFlutter(handlerName, payload, okMsg) {
     try {
       if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
@@ -405,12 +377,38 @@
   function notifyFlutterDeleteLesson(payload) { notifyFlutter("deleteLesson", payload, "🗑️ deleteLesson"); }
   function notifyFlutterGetQualities(payload) { notifyFlutter("getQualities", payload, "📩 getQualities"); }
 
-  function parseTimeToSeconds(timeStr) {
-    const parts = String(timeStr || "00:00:00").split(":").map(Number);
-    if (parts.length !== 3 || parts.some(isNaN)) return 0;
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  // =========================
+  // UI core: token + navigation
+  // =========================
+  function setTokenBoxes() {
+    const token = localStorage.getItem("authToken") || "(لا يوجد authToken)";
+    const b1 = el("tokenBoxPage1");
+    const b2 = el("tokenBoxPage2");
+    if (b1) b1.textContent = token;
+    if (b2) b2.textContent = token;
   }
 
+  function showPage(pageNo) {
+    const p1 = el("page1");
+    const p2 = el("page2");
+    if (!p1 || !p2) return;
+
+    if (pageNo === 1) {
+      p1.classList.remove("hidden");
+      p2.classList.add("hidden");
+      log("⬅️ رجوع للصفحة 1");
+    } else {
+      p1.classList.add("hidden");
+      p2.classList.remove("hidden");
+      log("➡️ فتح الصفحة 2");
+    }
+    setTokenBoxes();
+    refreshOfflineUI();
+  }
+
+  // =========================
+  // LocalStorage writers
+  // =========================
   function writeLessonContextToLocalStorage(ctx) {
     const timeline = (ctx.timelineMarkers || []).map(m => ({
       name: m.name || "",
@@ -440,10 +438,14 @@
     localStorage.setItem("dl_thumb", String(meta.thumb || ""));
     localStorage.setItem("dl_userEmail", String(meta.userEmail || ""));
     localStorage.setItem("dl_courseName", String(meta.courseName || ""));
+
     localStorage.setItem("offline_ready", "false");
     localStorage.removeItem("offline_filePath");
   }
 
+  // =========================
+  // Offline UI
+  // =========================
   function refreshOfflineUI() {
     const ready = localStorage.getItem("offline_ready") === "true";
     const fp = localStorage.getItem("offline_filePath") || "";
@@ -451,13 +453,16 @@
     const openOfflineBtn = el("openOfflineBtn");
     const deleteOfflineBtn = el("deleteOfflineBtn");
     const offlineInfo = el("offlineInfo");
-    if (!openOfflineBtn || !offlineInfo || !deleteOfflineBtn) return;
+
+    if (!openOfflineBtn || !deleteOfflineBtn || !offlineInfo) return;
 
     if (ready && fp) {
       openOfflineBtn.classList.remove("hidden");
       deleteOfflineBtn.classList.remove("hidden");
       offlineInfo.classList.remove("hidden");
-      offlineInfo.innerHTML = `<strong>✅ جاهز للأوفلاين</strong><br>filePath: <span style="opacity:.9">${escapeHtml(fp)}</span>`;
+      offlineInfo.innerHTML =
+        `<strong>✅ جاهز للأوفلاين</strong><br>` +
+        `filePath: <span style="opacity:.9">${escapeHtml(fp)}</span>`;
     } else {
       openOfflineBtn.classList.add("hidden");
       deleteOfflineBtn.classList.add("hidden");
@@ -501,13 +506,65 @@
     notifyFlutterDeleteLesson(payload);
   }
 
-  /* ===== Quality Modal Flow ===== */
+  // =========================
+  // Download Center (multi)
+  // Flutter -> window.onDownloadProgressList(list)
+  // =========================
+  window.onDownloadProgressList = function(payload){
+    const list = safeJsonParse(payload) || [];
+    const box = el("dlCenter");
+    if (!box) return;
+
+    if (!Array.isArray(list) || list.length === 0) {
+      box.classList.add("hidden");
+      box.innerHTML = "";
+      return;
+    }
+
+    box.classList.remove("hidden");
+
+    const itemsHtml = list.map(item => {
+      const p = Number(item.progress ?? 0);
+      const percent = Number.isFinite(item.percent) ? Number(item.percent) : Math.round(p * 100);
+      const remaining = Math.max(0, 100 - percent);
+      const status = String(item.status || "downloading");
+      const barClass = status === "failed" ? "bar failed" : (status === "paused" ? "bar paused" : "bar");
+
+      const thumb = item.thumbnailUrl
+        ? `<img class="dl-thumb" src="${escapeHtml(item.thumbnailUrl)}" />`
+        : `<div class="dl-thumb"></div>`;
+
+      return `
+        <div class="dl-item">
+          <div class="dl-row">
+            ${thumb}
+            <div class="dl-meta">
+              <div class="dl-lesson">${escapeHtml(item.lessonName || "")}</div>
+              <div class="dl-sub">${escapeHtml(item.courseName || "")} • ${escapeHtml(item.sectionName || "")}</div>
+              <div class="dl-status">${statusLabel(status)} — ${percent}% (متبقي ${remaining}%)</div>
+              <div class="${barClass}">
+                <div style="width:${percent}%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    box.innerHTML = `<div class="dl-title">⬇️ مركز التحميلات</div>${itemsHtml}`;
+  };
+
+  // =========================
+  // Quality modal flow
+  // =========================
   function showQualityModal(qualities){
     const modal = el("qualityModal");
     const list = el("qualityList");
     if (!modal || !list) return;
 
     list.innerHTML = "";
+
+    // أعلى جودة فوق
     const sorted = [...qualities].sort((a,b)=>{
       const ai = parseInt(String(a).replace(/\D/g,'')) || 0;
       const bi = parseInt(String(b).replace(/\D/g,'')) || 0;
@@ -534,6 +591,7 @@
     if (modal) modal.classList.add("hidden");
   }
 
+  // Flutter -> HTML qualities callback
   window.onQualitiesReady = function(payload){
     const data = safeJsonParse(payload) || {};
     if (!data.ok) { log("❌ qualities error: " + (data.error || "unknown")); return; }
@@ -543,28 +601,34 @@
   };
 
   function startDownloadWithSelectedQuality(q){
-    writeDownloadMetaToLocalStorage(DOWNLOAD_META);
-    const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
+    try {
+      writeDownloadMetaToLocalStorage(DOWNLOAD_META);
+      const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
 
-    localStorage.setItem("dl_selectedQuality", q);
+      localStorage.setItem("dl_selectedQuality", q);
 
-    const payload = {
-      ...DOWNLOAD_META,
-      selectedQuality: q,
-      isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
-      timelineMarkers: result.timeline || [],
-      lessonQuizzes: result.quizzes || [],
-      ts: Date.now()
-    };
+      const payload = {
+        ...DOWNLOAD_META,
+        selectedQuality: q,
+        isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
+        timelineMarkers: result.timeline || [],
+        lessonQuizzes: result.quizzes || [],
+        ts: Date.now()
+      };
 
-    log("✅ تم اختيار الجودة: " + q);
-    notifyFlutterDownloadLesson(payload);
+      log("✅ تم اختيار الجودة: " + q);
+      notifyFlutterDownloadLesson(payload);
+    } catch(e){
+      log("❌ startDownloadWithSelectedQuality error: " + (e?.message || e));
+    }
   }
 
-  /* ===== Flutter callbacks ===== */
+  // =========================
+  // Flutter callbacks: download done / deleted
+  // =========================
   window.onOfflineReady = function(payload) {
     const data = safeJsonParse(payload) || {};
-    if (data.error) { log("❌ Download error: " + data.error); }
+    if (data.error) log("❌ Download error: " + data.error);
 
     const filePath = String(data.filePath || "");
     localStorage.setItem("offline_ready", filePath ? "true" : "false");
@@ -593,9 +657,13 @@
     showPage(2);
   };
 
+  // =========================
+  // Bind UI events
+  // =========================
   function bindHandlers() {
     setTokenBoxes();
     refreshOfflineUI();
+    log("✅ bindHandlers اشتغل");
 
     const classicBtn = el("classicModeBtn");
     const goToPage2 = el("goToPage2");
@@ -614,6 +682,10 @@
       });
     }
 
+    if (goToPage2) goToPage2.addEventListener("click", () => showPage(2));
+    if (backToPage1) backToPage1.addEventListener("click", () => showPage(1));
+
+    // ✅ يطلب الجودات عند الضغط على تحميل
     if (downloadBtn) {
       downloadBtn.addEventListener("click", () => {
         notifyFlutterGetQualities({ youtubeUrl: DOWNLOAD_META.youtubeUrl, ts: Date.now() });
@@ -622,21 +694,23 @@
 
     if (openOfflineBtn) openOfflineBtn.addEventListener("click", openOfflineViaFlutter);
     if (deleteOfflineBtn) deleteOfflineBtn.addEventListener("click", deleteOfflineViaFlutter);
-
-    if (goToPage2) goToPage2.addEventListener("click", () => showPage(2));
-    if (backToPage1) backToPage1.addEventListener("click", () => showPage(1));
   }
 
+  // =========================
+  // Init
+  // =========================
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", bindHandlers);
   } else {
     bindHandlers();
   }
 
+  // fallback إضافي لو WebView بيستعجل
   setTimeout(() => { try { bindHandlers(); } catch (_) {} }, 300);
 
 })();
 </script>
+
 
 </body>
 </html>
