@@ -15,6 +15,7 @@
       --text-muted: #a8a8c0;
       --ok: #35d07f;
       --warn: #ffcf5a;
+      --bad: #ff5a72;
     }
     * { box-sizing: border-box; }
     body {
@@ -132,6 +133,43 @@
       line-height: 1.5;
     }
 
+    /* ✅ Download Center */
+    .dl-title { font-weight: 800; margin-bottom: 6px; }
+    .dl-item {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+    }
+    .dl-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .dl-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .dl-meta { flex: 1; min-width: 0; }
+    .dl-lesson { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dl-sub { font-size: 11px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dl-status { font-size: 11px; margin-top: 6px; }
+    .bar {
+      margin-top: 8px;
+      height: 8px;
+      background: rgba(255,255,255,.12);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .bar > div { height: 100%; width: 0%; background: linear-gradient(135deg, #35d07f, #1fbf6b); }
+    .bar.failed > div { background: linear-gradient(135deg, #ff5a72, #ff3d5f); }
+    .bar.paused > div { background: linear-gradient(135deg, #ffcf5a, #ff9f3d); }
+
     /* ✅ Quality Modal */
     .modal {
       position: fixed;
@@ -176,8 +214,6 @@
       margin-bottom: 8px;
       line-height: 1.5;
     }
-
-    /* ✅ الإصلاح المهم: المودال لما يكون hidden يختفي حتى لو .modal display:flex */
     #qualityModal.hidden { display: none !important; }
   </style>
 </head>
@@ -213,6 +249,9 @@
       <button id="deleteOfflineBtn" class="btn btn-secondary hidden">حذف الدرس المحمل 🗑️</button>
 
       <div id="offlineInfo" class="pill hidden"></div>
+
+      <!-- ✅ Download Center (multi downloads) -->
+      <div id="dlCenter" class="pill hidden"></div>
 
       <div id="offlinePlayerWrap" class="hidden">
         <div class="pill"><strong>🎬 Offline Player</strong></div>
@@ -274,6 +313,7 @@
   };
 
   function el(id){ return document.getElementById(id); }
+  function safeJsonParse(x) { try { return (typeof x === "string") ? JSON.parse(x) : x; } catch (_) { return x; } }
 
   function log(msg) {
     const activeLog = el("page2").classList.contains("hidden") ? el("log1") : el("log2");
@@ -281,7 +321,89 @@
     if (activeLog) activeLog.textContent = (activeLog.textContent + line).slice(-4000);
   }
 
-  function safeJsonParse(x) { try { return (typeof x === "string") ? JSON.parse(x) : x; } catch (_) { return x; } }
+  function escapeHtml(str) {
+    return String(str || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function statusLabel(s){
+    if (s === "completed") return "✅ اكتمل";
+    if (s === "failed") return "❌ فشل";
+    if (s === "paused") return "⏸️ متوقف";
+    return "⬇️ جاري التحميل";
+  }
+
+  /* =========================
+     ✅ Download Center (multi)
+     Flutter will call: window.onDownloadProgressList([...])
+     ========================= */
+  window.onDownloadProgressList = function(payload){
+    const list = safeJsonParse(payload) || [];
+    const box = el("dlCenter");
+    if (!box) return;
+
+    if (!Array.isArray(list) || list.length === 0) {
+      box.classList.add("hidden");
+      box.innerHTML = "";
+      return;
+    }
+
+    box.classList.remove("hidden");
+
+    const itemsHtml = list.map(item => {
+      const p = Number(item.progress ?? 0);
+      const percent = Number.isFinite(item.percent) ? Number(item.percent) : Math.round(p * 100);
+      const remaining = Math.max(0, 100 - percent);
+      const status = String(item.status || "downloading");
+
+      const barClass = status === "failed" ? "bar failed" : (status === "paused" ? "bar paused" : "bar");
+
+      const thumb = item.thumbnailUrl ? `<img class="dl-thumb" src="${escapeHtml(item.thumbnailUrl)}" />` : `<div class="dl-thumb"></div>`;
+
+      return `
+        <div class="dl-item">
+          <div class="dl-row">
+            ${thumb}
+            <div class="dl-meta">
+              <div class="dl-lesson">${escapeHtml(item.lessonName || "")}</div>
+              <div class="dl-sub">${escapeHtml(item.courseName || "")} • ${escapeHtml(item.sectionName || "")}</div>
+              <div class="dl-status">${statusLabel(status)} — ${percent}% (متبقي ${remaining}%)</div>
+              <div class="${barClass}">
+                <div style="width:${percent}%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    box.innerHTML = `<div class="dl-title">⬇️ مركز التحميلات</div>${itemsHtml}`;
+  };
+
+  /* ===== Existing helper functions (your flow) ===== */
+
+  function notifyFlutter(handlerName, payload, okMsg) {
+    try {
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        window.flutter_inappwebview.callHandler(handlerName, payload);
+        if (okMsg) log(okMsg);
+      } else {
+        log("ℹ️ flutter_inappwebview غير موجود (متصفح عادي)");
+      }
+    } catch (e) {
+      log(`⚠️ خطأ أثناء ${handlerName}: ` + (e && e.message ? e.message : e));
+    }
+  }
+
+  function notifyFlutterClassicMode(payload) { notifyFlutter("classicMode", payload, "✅ classicMode"); }
+  function notifyFlutterDownloadLesson(payload) { notifyFlutter("downloadLesson", payload, "✅ downloadLesson"); }
+  function notifyFlutterOpenOffline(payload) { notifyFlutter("openOffline", payload, "✅ openOffline"); }
+  function notifyFlutterDeleteLesson(payload) { notifyFlutter("deleteLesson", payload, "🗑️ deleteLesson"); }
+  function notifyFlutterGetQualities(payload) { notifyFlutter("getQualities", payload, "📩 getQualities"); }
 
   function parseTimeToSeconds(timeStr) {
     const parts = String(timeStr || "00:00:00").split(":").map(Number);
@@ -322,49 +444,6 @@
     localStorage.removeItem("offline_filePath");
   }
 
-  function setTokenBoxes() {
-    const token = localStorage.getItem("authToken") || "(لا يوجد authToken)";
-    if (el("tokenBoxPage1")) el("tokenBoxPage1").textContent = token;
-    if (el("tokenBoxPage2")) el("tokenBoxPage2").textContent = token;
-  }
-
-  function showPage(pageNo) {
-    const p1 = el("page1");
-    const p2 = el("page2");
-    if (!p1 || !p2) return;
-
-    if (pageNo === 1) {
-      p1.classList.remove("hidden");
-      p2.classList.add("hidden");
-      log("⬅️ رجوع للصفحة 1");
-    } else {
-      p1.classList.add("hidden");
-      p2.classList.remove("hidden");
-      log("➡️ فتح الصفحة 2");
-    }
-    setTokenBoxes();
-    refreshOfflineUI();
-  }
-
-  function notifyFlutter(handlerName, payload, okMsg) {
-    try {
-      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-        window.flutter_inappwebview.callHandler(handlerName, payload);
-        if (okMsg) log(okMsg);
-      } else {
-        log("ℹ️ flutter_inappwebview غير موجود (متصفح عادي)");
-      }
-    } catch (e) {
-      log(`⚠️ خطأ أثناء ${handlerName}: ` + (e && e.message ? e.message : e));
-    }
-  }
-
-  function notifyFlutterClassicMode(payload) { notifyFlutter("classicMode", payload, "✅ classicMode"); }
-  function notifyFlutterDownloadLesson(payload) { notifyFlutter("downloadLesson", payload, "✅ downloadLesson"); }
-  function notifyFlutterOpenOffline(payload) { notifyFlutter("openOffline", payload, "✅ openOffline"); }
-  function notifyFlutterDeleteLesson(payload) { notifyFlutter("deleteLesson", payload, "🗑️ deleteLesson"); }
-  function notifyFlutterGetQualities(payload) { notifyFlutter("getQualities", payload, "📩 getQualities"); }
-
   function refreshOfflineUI() {
     const ready = localStorage.getItem("offline_ready") === "true";
     const fp = localStorage.getItem("offline_filePath") || "";
@@ -385,15 +464,6 @@
       offlineInfo.classList.add("hidden");
       offlineInfo.textContent = "";
     }
-  }
-
-  function escapeHtml(str) {
-    return String(str || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
   }
 
   function openOfflineViaFlutter() {
@@ -544,7 +614,6 @@
       });
     }
 
-    // ✅ لا نطلب الجودات إلا عند الضغط على زر التحميل
     if (downloadBtn) {
       downloadBtn.addEventListener("click", () => {
         notifyFlutterGetQualities({ youtubeUrl: DOWNLOAD_META.youtubeUrl, ts: Date.now() });
@@ -571,5 +640,3 @@
 
 </body>
 </html>
-هو ليه الكود دا اول ما بفتح الويب فيو بيظهر قدامي الديلوج بتاع الجودات انا مش عاوز دا انا عاوز اظهره لما اضغط علي زر تحميل الدرس ويكون فيه جودات زي ما وضحت فوق فممكن تديني الصفحة بالكامل بعد اضافه التعديلات
-::contentReference[oaicite:0]{index=0}
