@@ -250,10 +250,8 @@
 
       <div id="offlineInfo" class="pill hidden"></div>
 
-      <!-- ✅ NEW: selected quality pill -->
       <div id="selectedQualityPill" class="pill hidden"></div>
 
-      <!-- ✅ Download Center (multi downloads) -->
       <div id="dlCenter" class="pill hidden"></div>
 
       <div id="offlinePlayerWrap" class="hidden">
@@ -275,7 +273,6 @@
 
   </div>
 
-  <!-- ✅ Quality Modal (hidden by default) -->
   <div id="qualityModal" class="modal hidden">
     <div class="modal-card">
       <div class="modal-title">اختر جودة التحميل</div>
@@ -369,6 +366,7 @@
   function notifyFlutterOpenOffline(payload) { notifyFlutter("openOffline", payload, "✅ openOffline"); }
   function notifyFlutterDeleteLesson(payload) { notifyFlutter("deleteLesson", payload, "🗑️ deleteLesson"); }
   function notifyFlutterGetQualities(payload) { notifyFlutter("getQualities", payload, "📩 getQualities"); }
+  function notifyFlutterWebReady(payload) { notifyFlutter("webReady", payload, "✅ webReady sent"); } // ✅ NEW
 
   function setTokenBoxes() {
     const token = localStorage.getItem("authToken") || "(لا يوجد authToken)";
@@ -394,7 +392,7 @@
     }
     setTokenBoxes();
     refreshOfflineUI();
-    renderSelectedQualityUI(); // ✅ NEW
+    renderSelectedQualityUI();
   }
 
   function writeLessonContextToLocalStorage(ctx) {
@@ -455,7 +453,6 @@
     }
   }
 
-  // ✅ NEW: show selected quality pill
   function renderSelectedQualityUI() {
     const pill = el("selectedQualityPill");
     if (!pill) return;
@@ -506,7 +503,7 @@
     notifyFlutterDeleteLesson(payload);
   }
 
-  // Download Center
+  // ✅ Download Center updates from Flutter
   window.onDownloadProgressList = function(payload){
     const list = safeJsonParse(payload) || [];
     const box = el("dlCenter");
@@ -550,7 +547,7 @@
     box.innerHTML = `<div class="dl-title">⬇️ مركز التحميلات</div>${itemsHtml}`;
   };
 
-  // Quality modal
+  // ✅ Quality modal
   function showQualityModal(qualities){
     const modal = el("qualityModal");
     const list = el("qualityList");
@@ -569,7 +566,7 @@
       b.textContent = q;
       b.onclick = () => {
         localStorage.setItem("dl_selectedQuality", q);
-        renderSelectedQualityUI(); // ✅ NEW
+        renderSelectedQualityUI();
         hideQualityModal();
         startDownloadWithSelectedQuality(q);
       };
@@ -598,7 +595,7 @@
       const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
 
       localStorage.setItem("dl_selectedQuality", q);
-      renderSelectedQualityUI(); // ✅ NEW
+      renderSelectedQualityUI();
 
       const payload = {
         ...DOWNLOAD_META,
@@ -616,6 +613,7 @@
     }
   }
 
+  // ✅ called by Flutter after download finishes
   window.onOfflineReady = function(payload) {
     const data = safeJsonParse(payload) || {};
     if (data.error) log("❌ Download error: " + data.error);
@@ -634,26 +632,51 @@
     if (data.selectedQuality != null) localStorage.setItem("dl_selectedQuality", String(data.selectedQuality));
 
     refreshOfflineUI();
-    renderSelectedQualityUI(); // ✅ NEW
+    renderSelectedQualityUI();
     showPage(2);
   };
 
+  // ✅ called by Flutter after delete finishes
   window.onOfflineDeleted = function(payload) {
     const data = safeJsonParse(payload) || {};
     if (data.error) { log("❌ Delete error: " + data.error); return; }
 
+    // ✅ reset offline state
     localStorage.setItem("offline_ready", "false");
     localStorage.removeItem("offline_filePath");
+
+    // ✅ optional: cleanup meta to avoid stale state confusion
+    // لو مش عايز تمسح الميتا، سيبهم كومنت
+    localStorage.removeItem("dl_youtubeUrl");
+    localStorage.removeItem("dl_courseId");
+    localStorage.removeItem("dl_sectionName");
+    localStorage.removeItem("dl_lessonName");
+    localStorage.removeItem("dl_thumb");
+    localStorage.removeItem("dl_userEmail");
+    localStorage.removeItem("dl_courseName");
+    // localStorage.removeItem("dl_selectedQuality"); // سيب الجودة لو عايزها تفضل
+
     refreshOfflineUI();
-    renderSelectedQualityUI(); // ✅ NEW
+    renderSelectedQualityUI();
     showPage(2);
+
+    log("🗑️ تم حذف الدرس (تم تصفير offline state).");
   };
 
+  // ✅ UI navigation + handlers
+  let _boundOnce = false;
+
   function bindHandlers() {
+    if (_boundOnce) return;
+    _boundOnce = true;
+
     setTokenBoxes();
     refreshOfflineUI();
-    renderSelectedQualityUI(); // ✅ NEW
+    renderSelectedQualityUI();
     log("✅ bindHandlers اشتغل");
+
+    // ✅ NEW: let Flutter know web is ready to receive progress
+    notifyFlutterWebReady({ ok: true, ts: Date.now() });
 
     const classicBtn = el("classicModeBtn");
     const goToPage2 = el("goToPage2");
@@ -662,6 +685,8 @@
     const openOfflineBtn = el("openOfflineBtn");
     const deleteOfflineBtn = el("deleteOfflineBtn");
     const qualityCancelBtn = el("qualityCancelBtn");
+    const openYoutubeBtn = el("openYoutube");
+    const openEmbedBtn = el("openYoutubeEmbedDirect");
 
     if (qualityCancelBtn) qualityCancelBtn.addEventListener("click", hideQualityModal);
 
@@ -683,6 +708,22 @@
 
     if (openOfflineBtn) openOfflineBtn.addEventListener("click", openOfflineViaFlutter);
     if (deleteOfflineBtn) deleteOfflineBtn.addEventListener("click", deleteOfflineViaFlutter);
+
+    // ✅ open YouTube (watch)
+    if (openYoutubeBtn) {
+      openYoutubeBtn.addEventListener("click", () => {
+        log("▶ فتح YouTube Watch");
+        window.location.href = YOUTUBE_WATCH_URL;
+      });
+    }
+
+    // ✅ open YouTube embed directly
+    if (openEmbedBtn) {
+      openEmbedBtn.addEventListener("click", () => {
+        log("▶ فتح YouTube Embed");
+        window.location.href = YOUTUBE_EMBED_URL;
+      });
+    }
   }
 
   if (document.readyState === "loading") {
@@ -691,6 +732,7 @@
     bindHandlers();
   }
 
+  // احتياطي
   setTimeout(() => { try { bindHandlers(); } catch (_) {} }, 300);
 
 })();
