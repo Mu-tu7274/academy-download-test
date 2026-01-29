@@ -89,7 +89,6 @@
       box-shadow: 0 10px 24px rgba(53, 208, 127, 0.25);
       font-weight: 800;
     }
-
     .hidden { display: none; }
 
     .log {
@@ -132,6 +131,51 @@
       color: #e8e8ff;
       line-height: 1.5;
     }
+
+    /* ✅ Quality Modal */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 9999;
+    }
+    .modal-card{
+      width:100%;
+      max-width: 420px;
+      background: rgba(10, 14, 36, 0.98);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.6);
+    }
+    .modal-title{
+      font-weight: 800;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .qbtn{
+      width:100%;
+      margin-top: 8px;
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text-main);
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .qbtn:hover{ background: rgba(255,255,255,0.10); }
+    .hint{
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align:center;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
   </style>
 </head>
 
@@ -163,7 +207,6 @@
 
       <button id="openOfflineBtn" class="btn btn-ok hidden">تشغيل الدرس أوفلاين ▶</button>
 
-      <!-- ✅ زر الحذف الجديد -->
       <button id="deleteOfflineBtn" class="btn btn-secondary hidden">حذف الدرس المحمل 🗑️</button>
 
       <div id="offlineInfo" class="pill hidden"></div>
@@ -186,6 +229,16 @@
       <div id="log2" class="log"></div>
     </div>
 
+  </div>
+
+  <!-- ✅ Quality Modal (hidden by default) -->
+  <div id="qualityModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-title">اختر جودة التحميل</div>
+      <div class="hint">سيتم تحميل الفيديو بنفس الجودة التي تختارها الآن.</div>
+      <div id="qualityList"></div>
+      <button id="qualityCancelBtn" class="btn btn-secondary" style="margin-top:12px;">إلغاء</button>
+    </div>
   </div>
 
 <script>
@@ -228,12 +281,8 @@
   }
 
   function safeJsonParse(x) {
-    try {
-      if (typeof x === "string") return JSON.parse(x);
-      return x;
-    } catch (_) {
-      return x;
-    }
+    try { return (typeof x === "string") ? JSON.parse(x) : x; }
+    catch (_) { return x; }
   }
 
   function parseTimeToSeconds(timeStr) {
@@ -328,6 +377,9 @@
   function notifyFlutterDeleteLesson(payload) {
     notifyFlutter("deleteLesson", payload, "🗑️ تم إرسال deleteLesson لـ Flutter");
   }
+  function notifyFlutterGetQualities(payload) {
+    notifyFlutter("getQualities", payload, "📩 طلبنا قائمة الجودات من Flutter");
+  }
 
   function prepareAndGo(url) {
     try {
@@ -388,10 +440,7 @@
 
   function openOfflineViaFlutter() {
     const fp = localStorage.getItem("offline_filePath") || "";
-    if (!fp) {
-      log("⚠️ لا يوجد offline_filePath");
-      return;
-    }
+    if (!fp) { log("⚠️ لا يوجد offline_filePath"); return; }
 
     const payload = {
       filePath: fp,
@@ -409,10 +458,7 @@
 
   function deleteOfflineViaFlutter() {
     const fp = localStorage.getItem("offline_filePath") || "";
-    if (!fp) {
-      log("⚠️ لا يوجد offline_filePath للحذف");
-      return;
-    }
+    if (!fp) { log("⚠️ لا يوجد offline_filePath للحذف"); return; }
 
     const payload = {
       filePath: fp,
@@ -426,13 +472,93 @@
       ts: Date.now()
     };
 
-    // ✅ علّم إن فيه طلب حذف + خزّن تفاصيله
     localStorage.setItem("delete_requested", "true");
     localStorage.setItem("delete_requested_payload", JSON.stringify(payload));
-
     notifyFlutterDeleteLesson(payload);
   }
 
+  /* =========================
+     ✅ Quality Modal Flow
+     ========================= */
+  function showQualityModal(qualities){
+    const modal = el("qualityModal");
+    const list = el("qualityList");
+    if (!modal || !list) return;
+
+    list.innerHTML = "";
+
+    // اعرض أعلى جودة فوق (اختياري)
+    const sorted = [...qualities].sort((a,b)=>{
+      const ai = parseInt(String(a).replace(/\D/g,'')) || 0;
+      const bi = parseInt(String(b).replace(/\D/g,'')) || 0;
+      return bi - ai;
+    });
+
+    sorted.forEach(q => {
+      const b = document.createElement("button");
+      b.className = "qbtn";
+      b.textContent = q;
+      b.onclick = () => {
+        localStorage.setItem("dl_selectedQuality", q);
+        hideQualityModal();
+        startDownloadWithSelectedQuality(q);
+      };
+      list.appendChild(b);
+    });
+
+    modal.classList.remove("hidden");
+  }
+
+  function hideQualityModal(){
+    const modal = el("qualityModal");
+    if (modal) modal.classList.add("hidden");
+  }
+
+  // Flutter يرجّع الجودات هنا
+  window.onQualitiesReady = function(payload){
+    const data = safeJsonParse(payload) || {};
+    try {
+      if (!data.ok) {
+        log("❌ onQualitiesReady error: " + (data.error || "unknown"));
+        return;
+      }
+      const qualities = data.qualities || [];
+      if (!qualities.length) {
+        log("⚠️ لا توجد جودات متاحة");
+        return;
+      }
+      showQualityModal(qualities);
+    } catch(e){
+      log("❌ onQualitiesReady parse error: " + (e?.message || e));
+    }
+  };
+
+  function startDownloadWithSelectedQuality(q){
+    try {
+      writeDownloadMetaToLocalStorage(DOWNLOAD_META);
+      const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
+
+      localStorage.setItem("dl_selectedQuality", q);
+
+      const payload = {
+        ...DOWNLOAD_META,
+        selectedQuality: q, // ✅ الجديد
+        isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
+        timelineMarkers: result.timeline || [],
+        lessonQuizzes: result.quizzes || [],
+        ts: Date.now()
+      };
+
+      log("✅ تم اختيار الجودة: " + q);
+      notifyFlutterDownloadLesson(payload);
+    } catch (e) {
+      log("❌ startDownloadWithSelectedQuality error: " + (e?.message || e));
+    }
+  }
+
+  /* =========================
+     ✅ Flutter callbacks
+     ========================= */
   window.onOfflineReady = function(payload) {
     const data = safeJsonParse(payload) || {};
     try {
@@ -456,6 +582,9 @@
       if (data.courseName != null) localStorage.setItem("dl_courseName", String(data.courseName));
       if (data.youtubeUrl != null) localStorage.setItem("dl_youtubeUrl", String(data.youtubeUrl));
 
+      // ✅ خزّن الجودة اللي تم التحميل بها لو Flutter رجعها (اختياري)
+      if (data.selectedQuality != null) localStorage.setItem("dl_selectedQuality", String(data.selectedQuality));
+
       log("✅ onOfflineReady: offline_ready=" + localStorage.getItem("offline_ready"));
       log("offline_filePath=" + localStorage.getItem("offline_filePath"));
 
@@ -466,7 +595,6 @@
     }
   };
 
-  // ✅ Flutter بعد الحذف ينفّذ: window.onOfflineDeleted({...})
   window.onOfflineDeleted = function(payload) {
     const data = safeJsonParse(payload) || {};
     try {
@@ -475,11 +603,9 @@
         return;
       }
 
-      // ✅ علّم في localStorage إنه اتحذف بنجاح + خزّن تفاصيله
       localStorage.setItem("offline_deleted_success", "true");
       localStorage.setItem("offline_deleted_payload", JSON.stringify(data));
 
-      // ✅ صفّر حالة الأوفلاين
       localStorage.setItem("offline_ready", "false");
       localStorage.removeItem("offline_filePath");
 
@@ -526,6 +652,9 @@
     const downloadBtn = el("downloadLessonBtn");
     const openOfflineBtn = el("openOfflineBtn");
     const deleteOfflineBtn = el("deleteOfflineBtn");
+    const qualityCancelBtn = el("qualityCancelBtn");
+
+    if (qualityCancelBtn) qualityCancelBtn.addEventListener("click", hideQualityModal);
 
     if (classicBtn) {
       classicBtn.addEventListener("click", () => {
@@ -535,36 +664,19 @@
       });
     }
 
+    // ✅ الجديد: زر التحميل يطلب الجودات أولاً
     if (downloadBtn) {
       downloadBtn.addEventListener("click", () => {
         try {
-          writeDownloadMetaToLocalStorage(DOWNLOAD_META);
-          log("✅ تم حفظ بيانات التحميل في localStorage");
-
-          const result = writeLessonContextToLocalStorage(LESSON_CONTEXT);
-
-          const payload = {
-            ...DOWNLOAD_META,
-            isInteractiveQuiz: LESSON_CONTEXT.isInteractiveQuiz,
-            timelineMarkers: result.timeline || [],
-            lessonQuizzes: result.quizzes || [],
-            ts: Date.now()
-          };
-
-          notifyFlutterDownloadLesson(payload);
+          notifyFlutterGetQualities({ youtubeUrl: DOWNLOAD_META.youtubeUrl, ts: Date.now() });
         } catch (e) {
-          log("❌ downloadLessonBtn error: " + (e && e.message ? e.message : e));
+          log("❌ download click error: " + (e?.message || e));
         }
       });
     }
 
-    if (openOfflineBtn) {
-      openOfflineBtn.addEventListener("click", openOfflineViaFlutter);
-    }
-
-    if (deleteOfflineBtn) {
-      deleteOfflineBtn.addEventListener("click", deleteOfflineViaFlutter);
-    }
+    if (openOfflineBtn) openOfflineBtn.addEventListener("click", openOfflineViaFlutter);
+    if (deleteOfflineBtn) deleteOfflineBtn.addEventListener("click", deleteOfflineViaFlutter);
 
     if (goToPage2) goToPage2.addEventListener("click", () => showPage(2));
     if (backToPage1) backToPage1.addEventListener("click", () => showPage(1));
